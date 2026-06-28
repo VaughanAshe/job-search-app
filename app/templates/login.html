@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Login - Job Search{% endblock %}
+{% block content %}
+<div class="min-h-full flex items-center justify-center py-12 px-4">
+    <div class="max-w-md w-full bg-white rounded-lg shadow p-8">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">Sign in</h2>
+        {% if error %}
+        <div class="bg-red-50 border border-red-200 text-red-700 rounded-md p-3 mb-4 text-sm">{{ error }}</div>
+        {% endif %}
+        <form method="POST" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input type="email" name="email" required class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="you@example.com">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" name="password" required class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="********">
+            </div>
+            <button type="submit" class="w-full bg-gray-900 text-white rounded-md py-2 font-medium hover:bg-gray-800">Sign in</button>
+        </form>
+        <p class="text-center text-sm text-gray-500 mt-6">
+            No account? <a href="/register" class="text-blue-600 hover:underline">Register</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Search Config - Job Search{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Search configuration</h1>
+
+    {% if saved %}
+    <div class="bg-green-50 border border-green-200 text-green-700 rounded-md p-3 mb-4 text-sm">Saved successfully.</div>
+    {% endif %}
+
+    <form method="POST" class="space-y-6 bg-white rounded-lg shadow p-6">
+        <!-- Search params -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Job titles <span class="text-gray-400">(comma-separated)</span></label>
+            <input type="text" name="job_titles" value="{{ config.job_titles }}" required
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="CTO, Chief Technology Officer, Head of Technology">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Locations <span class="text-gray-400">(comma-separated)</span></label>
+            <input type="text" name="locations" value="{{ config.locations }}" required
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="London, Remote, Manchester">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Salary minimum</label>
+                <input type="number" name="salary_min" value="{{ config.salary_min }}" min="0"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Salary maximum <span class="text-gray-400">(0 = no limit)</span></label>
+                <input type="number" name="salary_max" value="{{ config.salary_max or 0 }}" min="0"
+                    class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Excluded companies <span class="text-gray-400">(comma-separated)</span></label>
+            <input type="text" name="exclusions" value="{{ config.exclusions or '' }}"
+                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                placeholder="Company A, Company B">
+        </div>
+
+        <hr class="border-gray-200">
+
+        <!-- Schedule -->
+        <div class="flex items-center space-x-3">
+            <input type="checkbox" name="is_active" id="is_active" {% if config.is_active %}checked{% endif %}
+                class="h-4 w-4 rounded border-gray-300">
+            <div>
+                <label for="is_active" class="text-sm font-medium text-gray-700">Enable daily automated runs</label>
+                <p class="text-xs text-gray-500">The pipeline will run automatically at the hour you set below.</p>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Run hour <span class="text-gray-400">(0-23, UTC)</span></label>
+            <input type="number" name="run_hour" value="{{ config.run_hour }}" min="0" max="23"
+                class="w-24 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <hr class="border-gray-200">
+
+        <!-- Telegram (optional) -->
+        <div>
+            <div class="flex items-center space-x-3 mb-3">
+                <input type="checkbox" name="telegram_enabled" id="telegram_enabled" {% if config.telegram_enabled %}checked{% endif %}
+                    class="h-4 w-4 rounded border-gray-300">
+                <label for="telegram_enabled" class="text-sm font-medium text-gray-700">Send results to Telegram</label>
+            </div>
+            <div id="telegram-fields" class="space-y-3 {% if not config.telegram_enabled %}hidden{% endif %}">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Telegram chat ID</label>
+                    <input type="text" name="telegram_chat_id" value="{{ config.telegram_chat_id or '' }}"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Telegram bot token <span class="text-gray-400">(leave blank to use server default)</span></label>
+                    <input type="text" name="telegram_bot_token" value="{{ config.telegram_bot_token or '' }}"
+                        class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end">
+            <button type="submit" class="bg-gray-900 text-white rounded-md px-6 py-2 font-medium hover:bg-gray-800">Save configuration</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.getElementById('telegram_enabled').addEventListener('change', function() {
+    document.getElementById('telegram-fields').classList.toggle('hidden', !this.checked);
+});
+</script>
+{% endblock %}

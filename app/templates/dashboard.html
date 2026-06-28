@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Job Search{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Your job matches</h1>
+            {% if last_run %}
+            <p class="text-sm text-gray-500 mt-1">
+                Last run: {{ last_run.started_at.strftime('%d %b %H:%M') }}
+                {% if last_run.status == 'completed' %}{{ last_run.jobs_new }} new{% endif %}
+                {% if last_run.status == 'failed' %}<span class="text-red-600">Failed</span>{% endif %}
+            </p>
+            {% else %}
+            <p class="text-sm text-gray-500 mt-1">No runs yet. Configure your search and trigger a run.</p>
+            {% endif %}
+        </div>
+        <div class="flex items-center space-x-3">
+            <span class="text-sm text-gray-500">{{ total_jobs }} total jobs</span>
+            <form method="POST" action="/run-now">
+                <button type="submit" class="bg-blue-600 text-white rounded-md px-4 py-2 text-sm font-medium hover:bg-blue-700">Run now</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Today's jobs -->
+    {% if today_jobs %}
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Today</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for job in today_jobs %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <a href="{{ job.url }}" target="_blank" class="text-blue-600 hover:underline font-medium">{{ job.title }}</a>
+                            {% if job.fit_notes %}<p class="text-xs text-gray-400 mt-1">{{ job.fit_notes }}</p>{% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ job.company }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ job.location or '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ job.salary or '-' }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                {% if job.score >= 60 %}bg-green-100 text-green-800
+                                {% elif job.score >= 40 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {{ job.score }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right space-x-2">
+                            <button onclick="toggleFav({{ job.id }})" class="text-sm {% if job.is_favourite %}text-yellow-500{% else %}text-gray-400 hover:text-yellow-500{% endif %}">star</button>
+                            <button onclick="excludeJob({{ job.id }})" class="text-sm text-gray-400 hover:text-red-500">x</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Older jobs -->
+    {% if older_jobs %}
+    <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-3">Previous days</h2>
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Company</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Salary</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Score</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for job in older_jobs %}
+                    <tr class="hover:bg-gray-50 opacity-75">
+                        <td class="px-4 py-3">
+                            <a href="{{ job.url }}" target="_blank" class="text-blue-600 hover:underline font-medium">{{ job.title }}</a>
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ job.company }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ job.location or '-' }}</td>
+                        <td class="px-4 py-3 text-sm text-gray-700">{{ job.salary or '-' }}</td>
+                        <td class="px-4 py-3">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                {% if job.score >= 60 %}bg-green-100 text-green-800
+                                {% elif job.score >= 40 %}bg-yellow-100 text-yellow-800
+                                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                                {{ job.score }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-right space-x-2">
+                            <button onclick="toggleFav({{ job.id }})" class="text-sm {% if job.is_favourite %}text-yellow-500{% else %}text-gray-400 hover:text-yellow-500{% endif %}">star</button>
+                            <button onclick="excludeJob({{ job.id }})" class="text-sm text-gray-400 hover:text-red-500">x</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not today_jobs and not older_jobs %}
+    <div class="text-center py-16">
+        <p class="text-gray-400 text-lg">No jobs yet.</p>
+        <p class="text-gray-400 text-sm mt-2">
+            Go to <a href="/config" class="text-blue-600 hover:underline">Config</a> to set up your search parameters,
+            then hit "Run now".
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+async function toggleFav(jobId) {
+    const res = await fetch(`/jobs/${jobId}/favourite`, { method: 'POST' });
+    if (res.ok) location.reload();
+}
+async function excludeJob(jobId) {
+    const res = await fetch(`/jobs/${jobId}/exclude`, { method: 'POST' });
+    if (res.ok) location.reload();
+}
+</script>
+{% endblock %}
