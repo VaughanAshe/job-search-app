@@ -3,16 +3,26 @@ services:
     build: .
     container_name: jobsearch-app
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8001:8000"
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env:ro
     environment:
       - ENVIRONMENT=production
+    networks:
+      - landing_default
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jobs.rule=Host(`jobs.vaughanashe.ai`)"
+      - "traefik.http.routers.jobs.entrypoints=websecure"
+      - "traefik.http.routers.jobs.tls.certresolver=letsencrypt"
+      - "traefik.http.services.jobs.loadbalancer.server.port=8000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+networks:
+  landing_default:
+    external: true
