@@ -17,7 +17,7 @@ services:
       - "traefik.http.routers.jobs.tls.certresolver=letsencrypt"
       - "traefik.http.services.jobs.loadbalancer.server.port=8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s
       retries: 3
