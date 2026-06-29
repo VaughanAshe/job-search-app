@@ -22,3 +22,10 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "change-me")
 
 SCRAPE_HEADLESS = os.getenv("SCRAPE_HEADLESS", "true").lower() == "true"
 SCRAPE_MAX_RESULTS = int(os.getenv("SCRAPE_MAX_RESULTS", "100"))
+
+# OAuth2
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+LINKEDIN_CLIENT_ID = os.getenv("LINKEDIN_CLIENT_ID", "")
+LINKEDIN_CLIENT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET", "")
+

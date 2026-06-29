@@ -9,13 +9,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.config import SECRET_KEY, BASE_DIR, ADMIN_EMAIL, ADMIN_PASSWORD, ENVIRONMENT
+from app.config import SECRET_KEY, BASE_DIR, ADMIN_EMAIL, ADMIN_PASSWORD, ENVIRONMENT, GOOGLE_CLIENT_ID, LINKEDIN_CLIENT_ID
 from app.db import Base, engine, get_db, SessionLocal, User, SearchConfig, Job, RunLog
 from app.auth import (
     hash_password, verify_password, create_session, clear_session,
     get_current_user, require_user,
 )
 from app.scheduler import init_scheduler, run_user_pipeline
+from app.oauth_config import oauth
 
 TEMPLATES_DIR = BASE_DIR / "app" / "templates"
 STATIC_DIR = BASE_DIR / "app" / "static"
@@ -75,7 +76,11 @@ async def register_page(request: Request, db=Depends(get_db)):
     user = get_current_user(request, db)
     if user:
         return RedirectResponse(url="/dashboard", status_code=303)
-    return templates.TemplateResponse("register.html", {"request": request, "error": None})
+    return templates.TemplateResponse("register.html", {
+        "request": request, "error": None,
+        "GOOGLE_CLIENT_ID": GOOGLE_CLIENT_ID,
+        "LINKEDIN_CLIENT_ID": LINKEDIN_CLIENT_ID,
+    })
 
 
 @app.post("/register")
@@ -90,7 +95,11 @@ async def register_submit(
     if existing:
         return templates.TemplateResponse(
             "register.html",
-            {"request": request, "error": "An account with this email already exists."},
+            {
+                "request": request, "error": "An account with this email already exists.",
+                "GOOGLE_CLIENT_ID": GOOGLE_CLIENT_ID,
+                "LINKEDIN_CLIENT_ID": LINKEDIN_CLIENT_ID,
+            },
         )
     user = User(email=email, name=name, hashed_password=hash_password(password))
     db.add(user)
@@ -111,7 +120,11 @@ async def login_page(request: Request, db=Depends(get_db)):
     user = get_current_user(request, db)
     if user:
         return RedirectResponse(url="/dashboard", status_code=303)
-    return templates.TemplateResponse("login.html", {"request": request, "error": None})
+    return templates.TemplateResponse("login.html", {
+        "request": request, "error": None,
+        "GOOGLE_CLIENT_ID": GOOGLE_CLIENT_ID,
+        "LINKEDIN_CLIENT_ID": LINKEDIN_CLIENT_ID,
+    })
 
 
 @app.post("/login")
@@ -125,7 +138,11 @@ async def login_submit(
     if not user or not verify_password(password, user.hashed_password):
         return templates.TemplateResponse(
             "login.html",
-            {"request": request, "error": "Invalid email or password."},
+            {
+                "request": request, "error": "Invalid email or password.",
+                "GOOGLE_CLIENT_ID": GOOGLE_CLIENT_ID,
+                "LINKEDIN_CLIENT_ID": LINKEDIN_CLIENT_ID,
+            },
         )
     create_session(request, user)
     return RedirectResponse(url="/dashboard", status_code=303)
@@ -272,6 +289,93 @@ async def run_now(
     thread = threading.Thread(target=run_user_pipeline, args=(user.id,), daemon=True)
     thread.start()
     return RedirectResponse(url="/dashboard?refresh=1", status_code=303)
+
+
+# --- OAuth2 Social Login ---
+
+@app.get("/auth/google")
+async def google_login(request: Request):
+    """Redirect to Google OAuth consent screen."""
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="Google login not configured")
+    redirect_uri = str(request.url_for("google_callback"))
+    return await oauth.google.authorize_redirect(request, redirect_uri)
+
+
+@app.get("/auth/google/callback", name="google_callback")
+async def google_callback(request: Request, db=Depends(get_db)):
+    """Handle Google OAuth callback."""
+    token = await oauth.google.authorize_access_token(request)
+    userinfo = token.get("userinfo")
+    if not userinfo:
+        # Fallback: fetch userinfo
+        userinfo_resp = await oauth.google.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            token=token,
+        )
+        userinfo = userinfo_resp.json()
+
+    email = userinfo.get("email", "")
+    name = userinfo.get("name", email.split("@")[0])
+
+    if not email:
+        return RedirectResponse(url="/login?error=oauth", status_code=303)
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(email=email, name=name, hashed_password="!")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        config = SearchConfig(user_id=user.id)
+        db.add(config)
+        db.commit()
+
+    create_session(request, user)
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
+@app.get("/auth/linkedin")
+async def linkedin_login(request: Request):
+    """Redirect to LinkedIn OAuth consent screen."""
+    if not LINKEDIN_CLIENT_ID:
+        raise HTTPException(status_code=503, detail="LinkedIn login not configured")
+    redirect_uri = str(request.url_for("linkedin_callback"))
+    return await oauth.linkedin.authorize_redirect(request, redirect_uri)
+
+
+@app.get("/auth/linkedin/callback", name="linkedin_callback")
+async def linkedin_callback(request: Request, db=Depends(get_db)):
+    """Handle LinkedIn OAuth callback."""
+    token = await oauth.linkedin.authorize_access_token(request)
+
+    # Fetch user profile via OpenID Connect
+    userinfo_resp = await oauth.linkedin.get(
+        "https://api.linkedin.com/v2/userinfo",
+        token=token,
+    )
+    userinfo = userinfo_resp.json()
+
+    email = userinfo.get("email", "")
+    name = userinfo.get("name", email.split("@")[0] if email else "User")
+
+    if not email:
+        return RedirectResponse(url="/login?error=oauth", status_code=303)
+
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        user = User(email=email, name=name, hashed_password="!")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        config = SearchConfig(user_id=user.id)
+        db.add(config)
+        db.commit()
+
+    create_session(request, user)
+    return RedirectResponse(url="/dashboard", status_code=303)
 
 
 # --- Health check ---
