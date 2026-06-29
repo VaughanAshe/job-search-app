@@ -60,7 +60,7 @@ def _create_admin_if_needed():
 # ROUTES
 # ============================
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def index(request: Request, db=Depends(get_db)):
     user = get_current_user(request, db)
     if user:
