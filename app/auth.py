@@ -4,23 +4,24 @@ from datetime import datetime, timedelta
 from typing import Optional
 import secrets
 
+import bcrypt
 from fastapi import Request, HTTPException, status, Depends
 from fastapi.responses import RedirectResponse
-from passlib.hash import bcrypt
 
 from app.db import get_db, User
-
 
 SESSION_COOKIE = "jobsearch_session"
 SESSION_EXPIRY_HOURS = 72
 
 
 def hash_password(password: str) -> str:
-    return bcrypt.hash(password)
+    """Hash a password using bcrypt directly."""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.verify(password, hashed)
+    """Verify a password against a bcrypt hash."""
+    return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def create_session(request: Request, user: User):
