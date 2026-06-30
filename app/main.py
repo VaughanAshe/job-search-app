@@ -313,19 +313,26 @@ async def google_login(request: Request):
 @app.get("/auth/google/callback", name="google_callback")
 async def google_callback(request: Request, db=Depends(get_db)):
     """Handle Google OAuth callback."""
+    # Check for error parameter from Google (user denied consent, etc.)
+    if request.query_params.get("error"):
+        return RedirectResponse(url="/login?error=oauth", status_code=303)
+
     redirect_uri = _https_url_for(request, "google_callback")
-    token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
-    userinfo = token.get("userinfo")
-    if not userinfo:
-        # Fallback: fetch userinfo
-        userinfo_resp = await oauth.google.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            token=token,
-        )
-        userinfo = userinfo_resp.json()
+    try:
+        token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
+        userinfo = token.get("userinfo")
+        if not userinfo:
+            # Fallback: fetch userinfo
+            userinfo_resp = await oauth.google.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                token=token,
+            )
+            userinfo = userinfo_resp.json()
+    except Exception:
+        return RedirectResponse(url="/login?error=oauth", status_code=303)
 
     email = userinfo.get("email", "")
-    name = userinfo.get("name", email.split("@")[0])
+    name = userinfo.get("name", email.split("@")[0] if email else "User")
 
     if not email:
         return RedirectResponse(url="/login?error=oauth", status_code=303)
@@ -357,15 +364,21 @@ async def linkedin_login(request: Request):
 @app.get("/auth/linkedin/callback", name="linkedin_callback")
 async def linkedin_callback(request: Request, db=Depends(get_db)):
     """Handle LinkedIn OAuth callback."""
-    redirect_uri = _https_url_for(request, "linkedin_callback")
-    token = await oauth.linkedin.authorize_access_token(request, redirect_uri=redirect_uri)
+    if request.query_params.get("error"):
+        return RedirectResponse(url="/login?error=oauth", status_code=303)
 
-    # Fetch user profile via OpenID Connect
-    userinfo_resp = await oauth.linkedin.get(
-        "https://api.linkedin.com/v2/userinfo",
-        token=token,
-    )
-    userinfo = userinfo_resp.json()
+    redirect_uri = _https_url_for(request, "linkedin_callback")
+    try:
+        token = await oauth.linkedin.authorize_access_token(request, redirect_uri=redirect_uri)
+
+        # Fetch user profile via OpenID Connect
+        userinfo_resp = await oauth.linkedin.get(
+            "https://api.linkedin.com/v2/userinfo",
+            token=token,
+        )
+        userinfo = userinfo_resp.json()
+    except Exception:
+        return RedirectResponse(url="/login?error=oauth", status_code=303)
 
     email = userinfo.get("email", "")
     name = userinfo.get("name", email.split("@")[0] if email else "User")
