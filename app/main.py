@@ -313,7 +313,8 @@ async def google_login(request: Request):
 @app.get("/auth/google/callback", name="google_callback")
 async def google_callback(request: Request, db=Depends(get_db)):
     """Handle Google OAuth callback."""
-    token = await oauth.google.authorize_access_token(request)
+    redirect_uri = _https_url_for(request, "google_callback")
+    token = await oauth.google.authorize_access_token(request, redirect_uri=redirect_uri)
     userinfo = token.get("userinfo")
     if not userinfo:
         # Fallback: fetch userinfo
@@ -356,7 +357,8 @@ async def linkedin_login(request: Request):
 @app.get("/auth/linkedin/callback", name="linkedin_callback")
 async def linkedin_callback(request: Request, db=Depends(get_db)):
     """Handle LinkedIn OAuth callback."""
-    token = await oauth.linkedin.authorize_access_token(request)
+    redirect_uri = _https_url_for(request, "linkedin_callback")
+    token = await oauth.linkedin.authorize_access_token(request, redirect_uri=redirect_uri)
 
     # Fetch user profile via OpenID Connect
     userinfo_resp = await oauth.linkedin.get(
