@@ -293,12 +293,20 @@ async def run_now(
 
 # --- OAuth2 Social Login ---
 
+def _https_url_for(request: Request, name: str, **path_params) -> str:
+    """Build an HTTPS URL for a route, even behind Traefik's SSL-terminating proxy."""
+    url = str(request.url_for(name, **path_params))
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://"):]
+    return url
+
+
 @app.get("/auth/google")
 async def google_login(request: Request):
     """Redirect to Google OAuth consent screen."""
     if not GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=503, detail="Google login not configured")
-    redirect_uri = str(request.url_for("google_callback"))
+    redirect_uri = _https_url_for(request, "google_callback")
     return await oauth.google.authorize_redirect(request, redirect_uri)
 
 
@@ -341,7 +349,7 @@ async def linkedin_login(request: Request):
     """Redirect to LinkedIn OAuth consent screen."""
     if not LINKEDIN_CLIENT_ID:
         raise HTTPException(status_code=503, detail="LinkedIn login not configured")
-    redirect_uri = str(request.url_for("linkedin_callback"))
+    redirect_uri = _https_url_for(request, "linkedin_callback")
     return await oauth.linkedin.authorize_redirect(request, redirect_uri)
 
 
